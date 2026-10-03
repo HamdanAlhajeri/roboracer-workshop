@@ -1,0 +1,46 @@
+name: autodrive-workshop
+
+x-runtime: &runtime
+  image: autodriveecosystem/autodrive_roboracer_api:2026-icra-practice
+  working_dir: /workshop
+  environment:
+    ROS_DOMAIN_ID: "61"
+    ROS_LOCALHOST_ONLY: "1"
+    PYTHONPATH: /workshop
+    PYTHONDONTWRITEBYTECODE: "1"
+    PYTHONUNBUFFERED: "1"
+  volumes:
+    - ./runtime:/workshop/runtime:ro
+    - ./examples:/workshop/examples:ro
+    - ./tests:/workshop/tests:ro
+    - ./workshop_api.py:/workshop/workshop_api.py:ro
+    - ./controller.py:/workshop/controller.py:ro
+  entrypoint:
+    - /bin/bash
+    - -c
+    - source /opt/ros/humble/setup.bash && source /home/autodrive_devkit/install/setup.bash && exec "$$@"
+    - --
+  stop_grace_period: 3s
+
+services:
+  bridge:
+    <<: *runtime
+    ports:
+      - "127.0.0.1:4567:4567"
+    ipc: shareable
+    command: [python3, -m, runtime.bridge]
+    healthcheck:
+      test: [CMD, python3, -c, "import socket; socket.create_connection(('127.0.0.1', 4567), 1).close()"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 10s
+
+  controller:
+    <<: *runtime
+    network_mode: service:bridge
+    ipc: service:bridge
+    depends_on:
+      bridge:
+        condition: service_healthy
+    command: [python3, -m, runtime.node, --controller, "${WORKSHOP_CONTROLLER:-controller}"]
