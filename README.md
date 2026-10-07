@@ -1,6 +1,6 @@
 # AutoDRIVE programming workshop
 
-A standalone Windows workshop: run the practice simulator and implement a Python
+A standalone Windows or macOS workshop: run the practice simulator and implement a Python
 driving algorithm. Nothing imports the parent project. To distribute it, copy
 this folder **excluding `.runtime/` and `__pycache__/`**. Simulator downloads and
 machine-specific session paths stay in `.runtime/` and must not be shared.
@@ -10,6 +10,8 @@ classes. It reuses the main project's AutoDRIVE connection and command-expiry
 guard, while leaving the racing planner, research logs and hardware plans out.
 
 ## Start
+
+**macOS users:** `workshop.ps1` is Windows-only; follow [Start on macOS](#start-on-macos) instead.
 
 Install Docker Desktop with Linux containers and use Windows PowerShell 5.1 or
 newer. A Python editor is useful; installing ROS, Python or AVLite on Windows is
@@ -66,6 +68,62 @@ If you already have the official practice simulator, avoid another download:
 Only one simulator bridge can own port 4567. Stop the main project before the
 workshop; the launcher will not shut it down for you. Docker and a separate ROS
 domain keep the workshop's services apart from the main project's controllers.
+
+## Start on macOS
+
+`workshop.ps1` relies on Windows-only features, so on a Mac run the same Docker
+services and the macOS simulator by hand. You need Docker Desktop for Mac and
+Internet access for the first start; Python is not required on the Mac.
+
+**Apple Silicon (M1 or later):** the API image is `amd64` only and runs under
+emulation. In Docker Desktop, enable **Settings > General > Use Rosetta for
+x86_64/amd64 emulation on Apple Silicon**. Startup and the first image pull are
+slower than on an Intel Mac or Windows.
+
+Open Terminal in **this folder**. Download the practice simulator once (about
+107 MB; it stays in `.runtime/`, which is not shared):
+
+```bash
+mkdir -p .runtime
+curl --fail --location --retry 3 --output .runtime/practice.zip \
+  https://github.com/AutoDRIVE-Ecosystem/AutoDRIVE-RoboRacer-Sim-Racing/releases/download/2026-icra/autodrive_simulator_practice_macos.zip
+unzip -q .runtime/practice.zip -d .runtime/practice && rm .runtime/practice.zip
+xattr -dr com.apple.quarantine .runtime/practice
+```
+
+Check that nothing else uses port 4567 (no output means free), then start the
+bridge and controller and open the simulator:
+
+```bash
+lsof -nP -iTCP:4567 -sTCP:LISTEN
+export WORKSHOP_CONTROLLER=controller
+docker compose -p autodrive-workshop up -d bridge controller
+open -n "$(find .runtime/practice -maxdepth 3 -name '*.app' | head -n 1)" \
+  --args -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -ip 127.0.0.1 -port 4567
+```
+
+If macOS refuses to open the app, right-click it in Finder, choose **Open**, and
+confirm once. Then select **Connection** (`127.0.0.1:4567`) and **Autonomous**,
+as in the Windows steps above.
+
+The `.\workshop.ps1` commands map to these Terminal commands:
+
+| Windows command | macOS command |
+| --- | --- |
+| `pause` | `docker compose -p autodrive-workshop stop controller` |
+| `restart -Controller starter` | `export WORKSHOP_CONTROLLER=controller`, then `docker compose -p autodrive-workshop up -d --no-deps --force-recreate controller` |
+| `restart -Controller example` | `export WORKSHOP_CONTROLLER=examples.follow_the_gap`, then the same `up` command |
+| `logs -Follow` | `docker compose -p autodrive-workshop logs --tail 100 --follow controller bridge` |
+| `status` | `docker compose -p autodrive-workshop ps -a` |
+| `test` | `docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD:/workshop:ro" -w /workshop --entrypoint python3 autodriveecosystem/autodrive_roboracer_api:2026-icra-practice -m unittest discover -s tests -v` |
+| `stop` | Quit the simulator (Cmd+Q), then `docker compose -p autodrive-workshop down` |
+
+Unlike the Windows launcher, the selected controller is not remembered: set
+`WORKSHOP_CONTROLLER` in each new Terminal window before `up`. Pause and reset
+the car in the simulator before switching controllers, as in the Windows steps.
+
+> **Status:** these macOS steps mirror the Windows launcher but have not been
+> run on a Mac yet. Verify them on one machine before the session.
 
 ## Participant code
 
