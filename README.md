@@ -1,6 +1,6 @@
 # AutoDRIVE programming workshop
 
-A standalone Windows workshop: run the practice simulator and implement a Python
+A standalone Windows or macOS workshop: run the practice simulator and implement a Python
 driving algorithm. Nothing imports the parent project. To distribute it, copy
 this folder **excluding `.runtime/` and `__pycache__/`**. Simulator downloads and
 machine-specific session paths stay in `.runtime/` and must not be shared.
@@ -10,6 +10,8 @@ classes. It reuses the main project's AutoDRIVE connection and command-expiry
 guard, while leaving the racing planner, research logs and hardware plans out.
 
 ## Start
+
+**macOS users:** `workshop.ps1` is Windows-only; follow [Start on macOS](#start-on-macos) instead.
 
 Install Docker Desktop with Linux containers and use Windows PowerShell 5.1 or
 newer. A Python editor is useful; installing ROS, Python or AVLite on Windows is
@@ -66,6 +68,58 @@ If you already have the official practice simulator, avoid another download:
 Only one simulator bridge can own port 4567. Stop the main project before the
 workshop; the launcher will not shut it down for you. Docker and a separate ROS
 domain keep the workshop's services apart from the main project's controllers.
+
+## Start on macOS
+
+Use `workshop.sh` instead of `workshop.ps1`; it has the same actions. You need
+Docker Desktop for Mac and Internet access for the first start (it downloads the
+~107 MB macOS simulator and the API image). Python is not required on the Mac.
+
+**Apple Silicon (M1 or later):** the API image is `amd64` only and runs under
+emulation. In Docker Desktop, enable **Settings > General > Use Rosetta for
+x86_64/amd64 emulation on Apple Silicon**. The first pull is slower than on
+Intel or Windows.
+
+Open Terminal in **this folder**:
+
+```bash
+./workshop.sh start
+```
+
+If macOS blocks the app, right-click `AutoDRIVE Simulator.app` in
+`.runtime/practice/autodrive_simulator/`, choose **Open**, and confirm once.
+In the simulator select **Connection** (`127.0.0.1:4567`) and **Autonomous**,
+then implement [controller.py](controller.py), save it, and reload:
+
+```bash
+./workshop.sh restart -c starter
+```
+
+To try the supplied example, pause, reset the car in the simulator, then run:
+
+```bash
+./workshop.sh pause
+# Reset the car in the simulator before continuing.
+./workshop.sh restart -c example
+```
+
+| Command | Purpose |
+| --- | --- |
+| `./workshop.sh pause` | Stop sending driving commands; keep the simulator and bridge open |
+| `./workshop.sh restart` | Reload saved Python changes and resume the selected controller |
+| `./workshop.sh logs -f` | See controller errors and connection messages (omit `-f` for the last lines) |
+| `./workshop.sh status` | Show container state |
+| `./workshop.sh test` | Run supplied Python checks in a container without driving |
+| `./workshop.sh stop` | Close the workshop simulator and remove its containers; keep downloads |
+
+`-c` is short for `--controller`. Use `start -s '/path/AutoDRIVE Simulator.app'`
+to reuse an existing simulator instead of downloading one. If Docker Desktop is
+not running, the script opens it. The commands in the rest of this README use
+the Windows `.\workshop.ps1` form; substitute `./workshop.sh` and `-c`.
+
+> **Status:** verified on Apple Silicon (macOS, Docker Desktop with Rosetta):
+> `start`, `restart`, `pause`, `stop`, `status`, `logs` and `test` run, and the
+> simulator launches and listens on port 4567. A full lap has not been driven.
 
 ## Participant code
 
