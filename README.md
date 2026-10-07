@@ -71,59 +71,55 @@ domain keep the workshop's services apart from the main project's controllers.
 
 ## Start on macOS
 
-`workshop.ps1` relies on Windows-only features, so on a Mac run the same Docker
-services and the macOS simulator by hand. You need Docker Desktop for Mac and
-Internet access for the first start; Python is not required on the Mac.
+Use `workshop.sh` instead of `workshop.ps1`; it has the same actions. You need
+Docker Desktop for Mac and Internet access for the first start (it downloads the
+~107 MB macOS simulator and the API image). Python is not required on the Mac.
 
 **Apple Silicon (M1 or later):** the API image is `amd64` only and runs under
 emulation. In Docker Desktop, enable **Settings > General > Use Rosetta for
-x86_64/amd64 emulation on Apple Silicon**. Startup and the first image pull are
-slower than on an Intel Mac or Windows.
+x86_64/amd64 emulation on Apple Silicon**. The first pull is slower than on
+Intel or Windows.
 
-Open Terminal in **this folder**. Download the practice simulator once (about
-107 MB; it stays in `.runtime/`, which is not shared):
-
-```bash
-mkdir -p .runtime
-curl --fail --location --retry 3 --output .runtime/practice.zip \
-  https://github.com/AutoDRIVE-Ecosystem/AutoDRIVE-RoboRacer-Sim-Racing/releases/download/2026-icra/autodrive_simulator_practice_macos.zip
-unzip -q .runtime/practice.zip -d .runtime/practice && rm .runtime/practice.zip
-xattr -dr com.apple.quarantine .runtime/practice
-```
-
-Check that nothing else uses port 4567 (no output means free), then start the
-bridge and controller and open the simulator:
+Open Terminal in **this folder**:
 
 ```bash
-lsof -nP -iTCP:4567 -sTCP:LISTEN
-export WORKSHOP_CONTROLLER=controller
-docker compose -p autodrive-workshop up -d bridge controller
-open -n "$(find .runtime/practice -maxdepth 3 -name '*.app' | head -n 1)" \
-  --args -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -ip 127.0.0.1 -port 4567
+./workshop.sh start
 ```
 
-If macOS refuses to open the app, right-click it in Finder, choose **Open**, and
-confirm once. Then select **Connection** (`127.0.0.1:4567`) and **Autonomous**,
-as in the Windows steps above.
+If macOS blocks the app, right-click `AutoDRIVE Simulator.app` in
+`.runtime/practice/autodrive_simulator/`, choose **Open**, and confirm once.
+In the simulator select **Connection** (`127.0.0.1:4567`) and **Autonomous**,
+then implement [controller.py](controller.py), save it, and reload:
 
-The `.\workshop.ps1` commands map to these Terminal commands:
+```bash
+./workshop.sh restart -c starter
+```
 
-| Windows command | macOS command |
+To try the supplied example, pause, reset the car in the simulator, then run:
+
+```bash
+./workshop.sh pause
+# Reset the car in the simulator before continuing.
+./workshop.sh restart -c example
+```
+
+| Command | Purpose |
 | --- | --- |
-| `pause` | `docker compose -p autodrive-workshop stop controller` |
-| `restart -Controller starter` | `export WORKSHOP_CONTROLLER=controller`, then `docker compose -p autodrive-workshop up -d --no-deps --force-recreate controller` |
-| `restart -Controller example` | `export WORKSHOP_CONTROLLER=examples.follow_the_gap`, then the same `up` command |
-| `logs -Follow` | `docker compose -p autodrive-workshop logs --tail 100 --follow controller bridge` |
-| `status` | `docker compose -p autodrive-workshop ps -a` |
-| `test` | `docker run --rm --network none -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD:/workshop:ro" -w /workshop --entrypoint python3 autodriveecosystem/autodrive_roboracer_api:2026-icra-practice -m unittest discover -s tests -v` |
-| `stop` | Quit the simulator (Cmd+Q), then `docker compose -p autodrive-workshop down` |
+| `./workshop.sh pause` | Stop sending driving commands; keep the simulator and bridge open |
+| `./workshop.sh restart` | Reload saved Python changes and resume the selected controller |
+| `./workshop.sh logs -f` | See controller errors and connection messages (omit `-f` for the last lines) |
+| `./workshop.sh status` | Show container state |
+| `./workshop.sh test` | Run supplied Python checks in a container without driving |
+| `./workshop.sh stop` | Close the workshop simulator and remove its containers; keep downloads |
 
-Unlike the Windows launcher, the selected controller is not remembered: set
-`WORKSHOP_CONTROLLER` in each new Terminal window before `up`. Pause and reset
-the car in the simulator before switching controllers, as in the Windows steps.
+`-c` is short for `--controller`. Use `start -s '/path/AutoDRIVE Simulator.app'`
+to reuse an existing simulator instead of downloading one. If Docker Desktop is
+not running, the script opens it. The commands in the rest of this README use
+the Windows `.\workshop.ps1` form; substitute `./workshop.sh` and `-c`.
 
-> **Status:** these macOS steps mirror the Windows launcher but have not been
-> run on a Mac yet. Verify them on one machine before the session.
+> **Status:** verified on Apple Silicon (macOS, Docker Desktop with Rosetta):
+> `start`, `restart`, `pause`, `stop`, `status`, `logs` and `test` run, and the
+> simulator launches and listens on port 4567. A full lap has not been driven.
 
 ## Participant code
 
